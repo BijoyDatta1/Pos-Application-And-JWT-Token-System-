@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Helper\JWTToken;
+use App\Mail\SendOtpMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -73,7 +75,27 @@ class UserController extends Controller
     //otp send, otpVerification, Reset Password
     //send otp
     public function sendOtp(Request $request){
+        $user = User::where('email',$request->email)->first();
+        if($user){
+            $otp = rand(10000,99999);
+            $send = Mail::to($user->email)->send(new SendOtpMail($otp));
 
+            if($send){
+                $user->update([
+                    'otp' => $otp
+                ]);
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Otp sent successfully'
+                ],201);
+            }
+
+        }else{
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found'
+            ],401);
+        }
     }
 
     // otp verification
