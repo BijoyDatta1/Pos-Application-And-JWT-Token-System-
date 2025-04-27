@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helper\JWTToken;
 use App\Mail\SendOtpMail;
 use App\Models\User;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -86,7 +87,8 @@ class UserController extends Controller
                 ]);
                 return response()->json([
                     'status' => true,
-                    'message' => 'Otp sent successfully'
+                    'message' => 'Otp sent successfully',
+                    "otp" =>$otp
                 ],201);
             }
 
@@ -100,11 +102,43 @@ class UserController extends Controller
 
     // otp verification
     public function otpVerification(Request $request){
-
+        $result = User::where('email',$request->email)->where('otp',$request->otp)->first();
+        // return response()->json([
+        //     'email' => $result->email
+        // ]);
+        // die();
+        if($result != null){
+            $token = JWTToken::CreateToken($result->email,$result->id);
+            User::Where('email',$request->email)->Update(['otp' => 0]);
+            return response()->json([
+                'status' => true,
+                "message" => "Otp Verification Successfull",
+                'token' => $token
+            ],200);
+        }else{
+            return response()->json([
+                'status' =>false,
+                'message' => "Otp Verification Faild"
+            ],401);
+        }
     }
 
     //reset password
     public function resetPassword(Request $request){
-
+        try{
+            //This Header Email Set in TokenVerificationMiddleware Class
+            $email = $request->header('email');
+            $password = $request->password;
+            User::where('email', $email)->update(['password'=> bcrypt($password)]);
+            return response()->json([
+                'status' => true,
+                'message' => 'Password Update Successfull'
+            ],200);
+        }catch(Exception $e){
+            return response()->json([
+                'status' => false,
+                "message" => "Password Update Faild"
+            ],401);
+        }
     }
 }
